@@ -227,9 +227,10 @@ async function main() {
   const releaseStep = await step(`创建或更新 Release ${TAG_NORMALIZED}`, async () => {
     if (dryRun) {
       console.log(`   [dry] tag ${TAG_NORMALIZED}（来自 package.json 的 ${pkg.version}）`)
-      console.log('   [dry] 若该 tag 的 Release 已存在：默认跳过，加 --force 才更新')
-      // 用 1 而不是 0：后面靠 release.id 的真值判断附件步骤能不能跑
-      return { id: 1, assets: [], skipped: true }
+      console.log('   [dry] 会先查这个 tag 有没有 Release：有则默认跳过（--force 才更新），没有则创建')
+      // 用 1 而不是 0：后面靠 release.id 的真值判断附件步骤能不能跑。
+      // 注意不要标 skipped —— dry-run 并不知道远端到底有没有，标了就是在断言未验证的事。
+      return { id: 1, assets: [] }
     }
     let release
     try {
