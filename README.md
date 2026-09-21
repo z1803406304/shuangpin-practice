@@ -34,6 +34,25 @@ npm run dev          # → http://localhost:5273/
 需要 **Node.js >= 22.18**（测试是 `.mjs` 直接 import `.ts` 源码，依赖原生 TypeScript 类型剥离）。
 开发与 CI 使用 Node 24。
 
+> **Windows / PowerShell 用户注意**
+>
+> PowerShell 默认的执行策略是 `Restricted`（禁止运行任何脚本），所以直接敲 `npm` 会报
+> 「无法加载文件 …npm.ps1，因为在此系统上禁止运行脚本」。三种解法任选：
+>
+> ```powershell
+> # 1) 用 npm.cmd 绕过（立刻可用，不改系统设置）
+> npm.cmd install
+> npm.cmd run dev
+>
+> # 2) 一次性放开当前用户的策略（推荐；本地脚本放行，从网上下载的脚本仍需签名）
+> Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
+>
+> # 3) 只在本会话临时放开（关掉终端就恢复）
+> Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+> ```
+>
+> 另外：所有脚本也可以直接用 `node` 跑，例如 `node scripts/verify-file-url.mjs`。
+
 ### 打包成双击就能用的单文件
 
 ```bash

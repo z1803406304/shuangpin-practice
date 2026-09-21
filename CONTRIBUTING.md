@@ -6,6 +6,10 @@
 
 - **Node.js >= 22.18**（需要原生 TypeScript 类型剥离：测试是 `.mjs` 直接 import `.ts` 源码）
 - 开发与 CI 使用的是 **Node 24**
+- **Windows / PowerShell**：默认执行策略是 `Restricted`，直接敲 `npm` 会报
+  「无法加载文件 npm.ps1」。用 `npm.cmd` 代替，或者
+  `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 一次性放开（本地脚本放行、
+  网上下载的脚本仍需签名，是开发者常用的设置）。
 
 ```bash
 git clone https://github.com/z1803406304/shuangpin-practice.git
