@@ -159,12 +159,14 @@ async function step(title, fn) {
   console.log(`\n▶ ${title}`)
   try {
     const detail = await fn()
-    report.push({ title, ok: true, detail: detail ?? '' })
+    // 「跳过」要如实标出来，不能和「成功」混在一起 —— 否则汇总会骗人
+    const skipped = detail === 'skipped' || (typeof detail === 'object' && detail !== null && detail.skipped)
+    report.push({ title, ok: true, skipped: Boolean(skipped), detail: skipped ? '（已跳过，未改动）' : (detail ?? '') })
     return { ok: true, value: detail }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.log(`   ❌ ${message}`)
-    report.push({ title, ok: false, detail: message })
+    report.push({ title, ok: false, skipped: false, detail: message })
     return { ok: false, value: null }
   }
 }
@@ -279,18 +281,25 @@ async function main() {
   // 汇总
   console.log('\n── 汇总 ──────────────────────────────')
   for (const item of report) {
-    console.log(`${item.ok ? '✅' : '❌'} ${item.title}`)
+    const mark = !item.ok ? '❌' : item.skipped ? '⏭ ' : '✅'
+    console.log(`${mark} ${item.title}`)
   }
   const failed = report.filter((r) => !r.ok)
+  const skipped = report.filter((r) => r.ok && r.skipped)
   console.log('──────────────────────────────────────')
   if (dryRun) {
     console.log('（dry-run 结束，什么都没改。去掉 --dry 就会真正执行。）')
     return
   }
   if (failed.length === 0) {
-    console.log('全部完成 ✅')
+    if (skipped.length > 0) {
+      console.log(`完成（其中 ${skipped.length} 项按预期跳过，没有改动）`)
+      console.log('要发新版本：npm version minor && npm run release && npm run publish:github')
+    } else {
+      console.log('全部完成 ✅')
+    }
     console.log(`仓库：  https://github.com/${REPO}`)
-    console.log(`Release：https://github.com/${REPO}/releases/tag/${TAG}`)
+    console.log(`Release：https://github.com/${REPO}/releases/tag/${TAG_NORMALIZED}`)
     console.log('记得撤销 token：https://github.com/settings/tokens')
   } else {
     console.log(`有 ${failed.length} 项失败（其余已完成，可重跑本脚本只补失败的）`)
