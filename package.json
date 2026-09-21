@@ -1,6 +1,6 @@
 {
   "name": "shuangpin-practice",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "小鹤双拼打字练习系统：七种练习模式、卡住自动提示、错误热力图、历史复盘与易错复习，支持离线单文件运行",
