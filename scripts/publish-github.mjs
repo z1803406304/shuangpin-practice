@@ -21,6 +21,9 @@
  *
  * 脚本只读环境变量，不会把 token 写进任何文件。用完建议去 GitHub 撤销。
  * 重复执行是安全的：Release 已存在就更新，附件已存在就先删再传。
+ *
+ * 四步各自独立容错：某一步权限不足（比如 token 没有 Administration）时，
+ * 其余步骤照常完成，最后统一汇总 —— 而不是第一步失败就整体中断。
  */
 
 const REPO = 'z1803406304/shuangpin-practice'
@@ -73,7 +76,8 @@ npm install
 npm run dev          # → http://localhost:5273/
 \`\`\`
 
-需要 Node.js >= 22.18。
+需要 Node.js >= 22.18。Windows / PowerShell 用户注意：默认执行策略禁止运行脚本，
+用 \`npm.cmd\` 代替 \`npm\`（README 里有说明）。
 
 ## 正确性
 
@@ -101,7 +105,7 @@ const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? ''
 if (!token && !dryRun) {
   console.error('❌ 没有找到 GITHUB_TOKEN 环境变量。')
   console.error('')
-  console.error('   PowerShell:  $env:GITHUB_TOKEN = "github_pat_xxx"; npm run publish:github')
+  console.error('   PowerShell:  $env:GITHUB_TOKEN = "github_pat_xxx"; npm.cmd run publish:github')
   console.error('   bash:        GITHUB_TOKEN=github_pat_xxx npm run publish:github')
   console.error('')
   console.error('   token 生成方式见本文件顶部注释。想先看会做什么，加 -- --dry。')
@@ -138,50 +142,69 @@ async function call(method, url, body, extraHeaders = {}) {
       res.status === 403 || res.status === 404
         ? '（权限不足：fine-grained token 需要 Contents: Read and write + Administration: Read and write）'
         : ''
-    throw new Error(`${method} ${url} 失败：${res.status} ${text.slice(0, 200)} ${hint}`)
+    throw new Error(`${res.status} ${text.slice(0, 180)} ${hint}`)
   }
   return json
 }
 
-function step(title) {
+const report = []
+
+/** 跑一步，失败只记录不中断 —— 四件事互不依赖，不该因为一件失败就全放弃 */
+async function step(title, fn) {
   console.log(`\n▶ ${title}`)
+  try {
+    const detail = await fn()
+    report.push({ title, ok: true, detail: detail ?? '' })
+    return { ok: true, value: detail }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.log(`   ❌ ${message}`)
+    report.push({ title, ok: false, detail: message })
+    return { ok: false, value: null }
+  }
 }
 
 async function main() {
   const { readFileSync, existsSync, statSync } = await import('node:fs')
   const { resolve } = await import('node:path')
 
-  console.log(dryRun ? '（dry-run：不会发任何请求）' : `仓库：${REPO}`)
+  console.log(dryRun ? '（dry-run：不会发任何请求）' : `仓库：${REPO}，token：已从环境变量读取（长度 ${token.length}）`)
 
   // 1) 描述与主页
-  step('设置仓库描述')
-  await call('PATCH', `/repos/${REPO}`, { description: DESCRIPTION, homepage: '' })
-  console.log(`   描述：${DESCRIPTION.slice(0, 40)}…（共 ${DESCRIPTION.length} 字）`)
+  await step('设置仓库描述', async () => {
+    await call('PATCH', `/repos/${REPO}`, { description: DESCRIPTION, homepage: '' })
+    console.log(`   ✅ ${DESCRIPTION.slice(0, 42)}…（共 ${DESCRIPTION.length} 字）`)
+    return DESCRIPTION
+  })
 
   // 2) Topics
-  step('设置 Topics')
-  try {
-    await call('PUT', `/repos/${REPO}/topics`, { names: TOPICS })
-    console.log(`   ${TOPICS.join(' · ')}`)
-  } catch (error) {
-    // GitHub 对 topic 的字符有校验（中文 topic 在部分账号/接口版本下会被拒）。
-    // 这不是关键信息，失败就退回纯 ASCII 的，不要因此让整个脚本挂掉。
-    console.log(`   ⚠️ 完整列表被拒（${String(error.message).slice(0, 80)}…），改用纯英文 topic`)
-    const ascii = TOPICS.filter((t) => /^[a-z0-9-]+$/.test(t))
-    await call('PUT', `/repos/${REPO}/topics`, { names: ascii })
-    console.log(`   ${ascii.join(' · ')}`)
-  }
+  await step('设置 Topics', async () => {
+    try {
+      await call('PUT', `/repos/${REPO}/topics`, { names: TOPICS })
+      console.log(`   ✅ ${TOPICS.join(' · ')}`)
+      return TOPICS
+    } catch (error) {
+      // GitHub 对 topic 字符有校验（中文 topic 在部分情况下会被拒）。
+      // 这不是关键信息，失败就退回纯 ASCII 的，不要因此中断。
+      console.log(`   ⚠️ 完整列表被拒，改用纯英文 topic`)
+      const ascii = TOPICS.filter((t) => /^[a-z0-9-]+$/.test(t))
+      await call('PUT', `/repos/${REPO}/topics`, { names: ascii })
+      console.log(`   ✅ ${ascii.join(' · ')}`)
+      return ascii
+    }
+  })
 
   // 3) Release
-  step(`创建或更新 Release ${TAG}`)
-  let release = null
-  if (dryRun) {
-    console.log('   [dry] 若该 tag 的 Release 已存在则更新说明，否则新建（tag 指向 main）')
-    release = { id: 0, assets: [] }
-  } else {
+  const releaseStep = await step(`创建或更新 Release ${TAG}`, async () => {
+    if (dryRun) {
+      console.log('   [dry] 若该 tag 的 Release 已存在则更新说明，否则新建（tag 指向 main）')
+      // 用 1 而不是 0：后面靠 release.id 的真值判断附件步骤能不能跑
+      return { id: 1, assets: [] }
+    }
+    let release
     try {
       release = await call('GET', `/repos/${REPO}/releases/tags/${TAG}`)
-      console.log('   已存在，改为更新说明')
+      console.log(`   已存在（id ${release.id}），改为更新说明`)
       release = await call('PATCH', `/repos/${REPO}/releases/${release.id}`, { name: RELEASE_NAME, body: NOTES })
     } catch {
       release = await call('POST', `/repos/${REPO}/releases`, {
@@ -192,52 +215,71 @@ async function main() {
         draft: false,
         prerelease: false,
       })
-      console.log('   已创建')
+      console.log(`   ✅ 已创建（id ${release.id}）`)
     }
-  }
+    console.log(`   ${release.html_url}`)
+    return release
+  })
 
   // 4) 附件
-  step('上传便携包')
-  const assetPath = resolve(import.meta.dirname, '..', ASSET_PATH)
-  if (!existsSync(assetPath)) {
-    console.log(`   ⚠️ 找不到 ${ASSET_PATH}，跳过。先跑：npm run release`)
-  } else {
+  await step('上传便携包', async () => {
+    const assetPath = resolve(import.meta.dirname, '..', ASSET_PATH)
+    if (!existsSync(assetPath)) {
+      throw new Error(`找不到 ${ASSET_PATH}，先跑：npm run release`)
+    }
+    const release = releaseStep.value
+    if (!release?.id) throw new Error('Release 没建成，附件跳过')
+
     const size = statSync(assetPath).size
     console.log(`   文件：${ASSET_PATH}（${(size / 1024).toFixed(0)} KB）`)
     const name = 'shuangpin-portable.zip'
 
-    if (!dryRun) {
-      const existing = (release?.assets ?? []).find((a) => a.name === name)
-      if (existing) {
-        await call('DELETE', `/repos/${REPO}/releases/assets/${existing.id}`)
-        console.log('   已删除同名旧附件')
-      }
-      const binary = readFileSync(assetPath)
-      // 不要手写 Content-Length：undici 会根据 Buffer 自动算，手写反而可能不一致
-      const res = await fetch(
-        `https://uploads.github.com/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`,
-        {
-          method: 'POST',
-          headers: { ...headers, 'Content-Type': 'application/zip' },
-          body: binary,
-        },
-      )
-      if (!res.ok) throw new Error(`上传失败：${res.status} ${(await res.text()).slice(0, 200)}`)
-      const info = await res.json()
-      console.log(`   ✅ 已上传：${info.name}（${(info.size / 1024).toFixed(0)} KB）`)
-      console.log(`   ${info.browser_download_url}`)
-    } else {
+    if (dryRun) {
       console.log('   [dry] 会删除同名旧附件并上传新附件')
+      return name
     }
-  }
 
-  console.log('')
+    const existing = (release.assets ?? []).find((a) => a.name === name)
+    if (existing) {
+      await call('DELETE', `/repos/${REPO}/releases/assets/${existing.id}`)
+      console.log('   已删除同名旧附件')
+    }
+    const binary = readFileSync(assetPath)
+    // 不手写 Content-Length：undici 会根据 Buffer 自动算，手写反而可能不一致
+    const res = await fetch(
+      `https://uploads.github.com/repos/${REPO}/releases/${release.id}/assets?name=${encodeURIComponent(name)}`,
+      {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/zip' },
+        body: binary,
+      },
+    )
+    if (!res.ok) throw new Error(`上传失败：${res.status} ${(await res.text()).slice(0, 180)}`)
+    const info = await res.json()
+    console.log(`   ✅ 已上传：${info.name}（${(info.size / 1024).toFixed(0)} KB）`)
+    console.log(`   ${info.browser_download_url}`)
+    return info.browser_download_url
+  })
+
+  // 汇总
+  console.log('\n── 汇总 ──────────────────────────────')
+  for (const item of report) {
+    console.log(`${item.ok ? '✅' : '❌'} ${item.title}`)
+  }
+  const failed = report.filter((r) => !r.ok)
+  console.log('──────────────────────────────────────')
   if (dryRun) {
-    console.log('（dry-run 结束，什么都没改。去掉 -- 后面的 --dry 就会真正执行。）')
+    console.log('（dry-run 结束，什么都没改。去掉 --dry 就会真正执行。）')
+    return
+  }
+  if (failed.length === 0) {
+    console.log('全部完成 ✅')
+    console.log(`仓库：  https://github.com/${REPO}`)
+    console.log(`Release：https://github.com/${REPO}/releases/tag/${TAG}`)
+    console.log('记得撤销 token：https://github.com/settings/tokens')
   } else {
-    console.log(`✅ 完成。去看看：https://github.com/${REPO}`)
-    console.log(`   Release 页面：https://github.com/${REPO}/releases/tag/${TAG}`)
-    console.log('   顺手把 token 撤销掉：https://github.com/settings/tokens')
+    console.log(`有 ${failed.length} 项失败（其余已完成，可重跑本脚本只补失败的）`)
+    process.exitCode = 1
   }
 }
 
