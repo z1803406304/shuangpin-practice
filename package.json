@@ -35,6 +35,7 @@
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "node --test \"tests/**/*.test.mjs\"",
+    "check:docs": "node scripts/check-docs.mjs",
     "gen:data": "node scripts/gen-syllables.mjs",
     "gen:corpus": "node scripts/gen-corpus.mjs",
     "gen:all": "node scripts/gen-syllables.mjs && node scripts/gen-corpus.mjs",
