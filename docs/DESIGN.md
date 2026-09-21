@@ -235,7 +235,7 @@ shuangpin/
    没有码表交叉验证，这类期望值错误会直接变成产品 bug。
 
 ### 10.4 环境与工具问题记录
-| 坑 | 现象 | 解法 |
+| 问题 | 现象 | 解法 |
 | --- | --- | --- |
 | npm 默认缓存目录在工作区外 | `npm install` 报「操作被操作系统拒绝」 | `.npmrc` 里 `cache=.npm-cache` |
 | npm 的 `.ps1` 被执行策略挡住 | `npm -v` 报 UnauthorizedAccess | 统一用 `npm.cmd` |
@@ -486,11 +486,11 @@ shuangpin/
 | 内联的 pinyin-pro 动态加载可用（自定义文本添加成功） | ✅ |
 
 这一步的价值：把「离线包可用」从一个**推断**变成了**证据**，
-而且以后改构建配置能一条命令回归（防止 §13.4 那两个白屏坑复发）。
+而且以后改构建配置能一条命令回归（防止 §13.4 那两个白屏问题复发）。
 
 ### 14.3 验证脚本的问题记录
 1. **DOM 断言没等 Vue 渲染**：dispatch 完按键立刻读 `.stats` 拿到的是旧值，
-   导致「键盘输入有反应」误报失败。这是本会话第三次踩同一个坑了，
+   导致「键盘输入有反应」误报失败。同类问题在本项目里出现过三次，
    结论：**任何「操作 → 读 DOM」的验证都要留一个 tick**。
 2. **把浏览器的临时 profile 建在了项目目录里**：无头浏览器会生成几万个文件，
    Vite 的 watcher 去 watch 这些文件直接把 dev server 搞崩（watch EBUSY 崩溃的第二次）。
@@ -613,7 +613,7 @@ idle  --start-->  running  --pause-*-->  paused  --resume-->  running
 - `core/history.ts` 新增两个纯函数（可测）：
   - `aggregateKeyErrors(records, limit)` → `{ errors, total, rounds, keys, top }`，
     其中 `errors` 可以直接喂给键位图着色组件，`top` 是按次数排序的榜单
-  - `aggregateCharErrors(records, limit)`，顺手把原先写在 store 里的错字聚合挪进 core，
+  - `aggregateCharErrors(records, limit)`，同时把原先写在 store 里的错字聚合挪进 core，
     「易错复习」模式和「更多设置」里的设置面板都复用它
 - 历史面板新增热力图区块：
   - **范围选择**：全部历史 / 最近 30 轮 / 最近 10 轮 / 选中的那一轮
