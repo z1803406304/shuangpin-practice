@@ -73,20 +73,53 @@ copyFileSync(SOURCE, resolve(RELEASE, '双拼练习.html'))
 copyFileSync(SOURCE, resolve(RELEASE, 'shuangpin-practice.html'))
 writeFileSync(resolve(RELEASE, '使用说明.txt'), GUIDE, 'utf8')
 
+/**
+ * 打 zip。Node 没有内置 zip，所以按平台找工具：
+ * Windows 用 PowerShell 的 Compress-Archive，Linux/macOS 用 zip 命令。
+ * 都找不到就只产出 HTML —— 压缩包不是必需品，不该因此让整个脚本失败。
+ */
+function makeZip(dir, zipPath) {
+  const names = readdirSync(dir)
+  const attempts = [
+    {
+      label: 'PowerShell Compress-Archive',
+      run: () =>
+        execFileSync(
+          'powershell.exe',
+          ['-NoProfile', '-Command', `Compress-Archive -Path "${dir}\\*" -DestinationPath "${zipPath}" -Force`],
+          { stdio: 'ignore' },
+        ),
+    },
+    {
+      label: 'zip',
+      run: () => execFileSync('zip', ['-q', '-r', zipPath, ...names], { cwd: dir, stdio: 'ignore' }),
+    },
+  ]
+  for (const attempt of attempts) {
+    try {
+      attempt.run()
+      return attempt.label
+    } catch {
+      /* 换下一个 */
+    }
+  }
+  return null
+}
+
 // 用 PowerShell 打 zip（Node 没有内置 zip）。
 // 路径里的通配符交给 PowerShell 展开，命令串本身保持 ASCII，避免编码问题。
-execFileSync(
-  'powershell.exe',
-  ['-NoProfile', '-Command', `Compress-Archive -Path "${RELEASE}\\*" -DestinationPath "${ZIP}" -Force`],
-  { stdio: 'ignore' },
-)
+const zipTool = makeZip(RELEASE, ZIP)
 
 const files = readdirSync(RELEASE).sort()
 const kb = (path) => `${Math.round(statSync(path).size / 1024)} KB`
 console.log('✅ 便携发布包已生成：release/')
 for (const name of files) {
-  const full = resolve(RELEASE, name)
-  console.log(`   ${name.padEnd(28)} ${name.endsWith('.zip') ? kb(full) : kb(full)}`)
+  console.log(`   ${name.padEnd(28)} ${kb(resolve(RELEASE, name))}`)
+}
+if (!zipTool) {
+  console.log('')
+  console.log('   ℹ️  没找到打包工具（Windows 的 PowerShell 或 Linux 的 zip），zip 已跳过。')
+  console.log('      单文件 HTML 已经生成好了，需要压缩包就手动压一下。')
 }
 console.log('')
 console.log('   用法：把整个 release 文件夹（或那个 zip）拷到任何地方，')
