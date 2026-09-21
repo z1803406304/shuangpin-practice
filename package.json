@@ -40,7 +40,8 @@
     "gen:all": "node scripts/gen-syllables.mjs && node scripts/gen-corpus.mjs",
     "verify:flypy": "node scripts/verify-against-flypy.mjs",
     "verify:file": "node scripts/verify-file-url.mjs",
-    "make:screenshot": "node scripts/make-screenshot.mjs"
+    "make:screenshot": "node scripts/make-screenshot.mjs",
+    "publish:github": "node scripts/publish-github.mjs"
   },
   "dependencies": {
     "pinyin-pro": "3.29",
