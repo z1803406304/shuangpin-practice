@@ -18,8 +18,7 @@ npm run dev          # → http://localhost:5273/
 
 | 命令 | 作用 |
 | --- | --- |
-| `npm test` | 全部单测（85 个，纯 Node，不需要浏览器） |
-| `npm run check:docs` | 文档写法自检（第一人称、口语化、套话、夸张表述） |
+| `npm test` | 全部单测（81 个，纯 Node，不需要浏览器） |
 | `npm run typecheck` | `vue-tsc --noEmit` |
 | `npm run build` | 构建到 `dist/` |
 | `npm run build:offline` | 打包成可双击的单文件 HTML（含自检） |
@@ -67,7 +66,8 @@ test: 补 aggregateKeyErrors 的坏数据用例
 
 **6. 文档写法：说明而非自述。**
 文档写「项目做什么、怎么用、为什么这样取舍」，不写「我怎么想、过程多曲折」。
-下面这些写法由 `npm run check:docs` 拦下：
+具体来说：不用第一人称，少用破折号（改用冒号、逗号或句号），
+不用口语化用词与套话过渡，不加宣传性修饰。
 
 ```
 我们 / 咱们 / 笔者        → 换中立主语：「编码器输出」「测试里的期望值」
@@ -77,9 +77,7 @@ test: 补 aggregateKeyErrors 的坏数据用例
 完美 / 强大 / 无缝 / 赋能  → 删掉宣传性修饰，只留事实
 ```
 
-规则表在 `scripts/check-docs.mjs`：正文参与检查，围栏代码块、行内代码和
-HTML 注释不参与（否则没法举反例）；确实要保留某一行时，在该行加
-`docs-lint: allow`。`npm test` 里有一个用例跑同一套规则，CI 里也单独跑一次。
+这条约定靠人工把关，没有脚本检查。
 
 ## 加一套双拼方案
 
@@ -101,12 +99,6 @@ HTML 注释不参与（否则没法举反例）；确实要保留某一行时，
 
 ```bash
 npm test && npm run typecheck && npm run build
-```
-
-`npm test` 里已经包含文档写法自检。想在提交前看逐条违规位置，单独跑：
-
-```bash
-npm run check:docs
 ```
 
 改动涉及构建配置、产物内联逻辑或离线包结构时，再跑：

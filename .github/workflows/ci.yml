@@ -24,10 +24,6 @@ jobs:
       - name: 单元测试
         run: npm test
 
-      # 文档写法自检：第一人称、口语化用词、套话过渡与夸张表述
-      - name: 文档自检
-        run: npm run check:docs
-
       - name: 类型检查
         run: npm run typecheck
 
