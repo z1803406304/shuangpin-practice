@@ -22,7 +22,7 @@ npm run dev          # → http://localhost:5273/
 
 | 命令 | 作用 |
 | --- | --- |
-| `npm test` | 全部单测（80 个，纯 Node，不需要浏览器） |
+| `npm test` | 全部单测（81 个，纯 Node，不需要浏览器） |
 | `npm run typecheck` | `vue-tsc --noEmit` |
 | `npm run build` | 构建到 `dist/` |
 | `npm run build:offline` | 打包成可双击的单文件 HTML（含自检） |
