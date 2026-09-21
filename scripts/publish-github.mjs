@@ -27,9 +27,14 @@
  */
 
 const REPO = 'z1803406304/shuangpin-practice'
-const TAG = 'v1.0.0'
-const RELEASE_NAME = 'v1.0.0'
+// tag 从 package.json 的版本号推导，避免「代码更新了但发布脚本还写着旧 tag」
+const pkg = JSON.parse((await import('node:fs')).readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
+const TAG = process.argv.find((a) => /^v?\d+\.\d+\.\d+$/.test(a)) ?? `v${pkg.version}`
+const TAG_NORMALIZED = TAG.startsWith('v') ? TAG : `v${TAG}`
+const RELEASE_NAME = TAG_NORMALIZED
 const ASSET_PATH = 'release/shuangpin-portable.zip'
+/** 已发布的 Release 默认不覆盖（改写别人可能已经下载过的版本不是好习惯），要覆盖得显式加 --force */
+const force = process.argv.includes('--force')
 
 const DESCRIPTION =
   '小鹤双拼打字练习系统：七种练习模式、卡住自动提示、开始与暂停、错误热力图与历史复盘、易错复习，可打包成离线单文件双击即用'
@@ -195,20 +200,26 @@ async function main() {
   })
 
   // 3) Release
-  const releaseStep = await step(`创建或更新 Release ${TAG}`, async () => {
+  const releaseStep = await step(`创建或更新 Release ${TAG_NORMALIZED}`, async () => {
     if (dryRun) {
-      console.log('   [dry] 若该 tag 的 Release 已存在则更新说明，否则新建（tag 指向 main）')
+      console.log(`   [dry] tag ${TAG_NORMALIZED}（来自 package.json 的 ${pkg.version}）`)
+      console.log('   [dry] 若该 tag 的 Release 已存在：默认跳过，加 --force 才更新')
       // 用 1 而不是 0：后面靠 release.id 的真值判断附件步骤能不能跑
-      return { id: 1, assets: [] }
+      return { id: 1, assets: [], skipped: true }
     }
     let release
     try {
-      release = await call('GET', `/repos/${REPO}/releases/tags/${TAG}`)
-      console.log(`   已存在（id ${release.id}），改为更新说明`)
+      release = await call('GET', `/repos/${REPO}/releases/tags/${TAG_NORMALIZED}`)
+      if (!force) {
+        console.log(`   ⏭  ${TAG_NORMALIZED} 已经发布过了，默认不改写它。`)
+        console.log('      要发新版本：npm version minor && npm run release && npm run publish:github')
+        return { ...release, skipped: true }
+      }
+      console.log(`   已存在（id ${release.id}），--force 生效，更新说明并替换附件`)
       release = await call('PATCH', `/repos/${REPO}/releases/${release.id}`, { name: RELEASE_NAME, body: NOTES })
     } catch {
       release = await call('POST', `/repos/${REPO}/releases`, {
-        tag_name: TAG,
+        tag_name: TAG_NORMALIZED,
         target_commitish: 'main',
         name: RELEASE_NAME,
         body: NOTES,
@@ -223,11 +234,15 @@ async function main() {
 
   // 4) 附件
   await step('上传便携包', async () => {
+    const release = releaseStep.value
+    if (release?.skipped) {
+      console.log(`   ⏭  跳过（${TAG_NORMALIZED} 已发布，本次不改写）`)
+      return 'skipped'
+    }
     const assetPath = resolve(import.meta.dirname, '..', ASSET_PATH)
     if (!existsSync(assetPath)) {
       throw new Error(`找不到 ${ASSET_PATH}，先跑：npm run release`)
     }
-    const release = releaseStep.value
     if (!release?.id) throw new Error('Release 没建成，附件跳过')
 
     const size = statSync(assetPath).size
