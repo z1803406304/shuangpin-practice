@@ -7,6 +7,7 @@ import { computed } from 'vue'
 
 import { closePanel } from '../stores/ui.ts'
 import { resetSettings, settings } from '../stores/settings.ts'
+import { APP_VERSION } from '../version.ts'
 
 const policyText = computed(() => {
   if (!settings.autoHint) return '已关闭'
@@ -105,7 +106,7 @@ const nextText = computed(() => (settings.autoNextMs <= 0 ? '手动切下一题�
 
       <footer>
         <span class="about">
-          v0.2.0 · 小鹤双拼 · 键位表已用官方码表逐字交叉验证（7701 字一致率 99.65%）
+          v{{ APP_VERSION }} · 小鹤双拼 · 键位表已用官方码表逐字交叉验证（7701 字一致率 99.65%）
         </span>
         <button class="btn" type="button" @click="resetSettings()">恢复默认设置</button>
         <button class="btn primary" type="button" @click="closePanel()">完成</button>

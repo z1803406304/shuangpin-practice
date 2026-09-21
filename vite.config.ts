@@ -1,5 +1,10 @@
+import { readFileSync } from 'node:fs'
+
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+
+// 版本号只在 package.json 里维护一份，通过 define 注入到界面
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 export default defineConfig(({ mode }) => {
   // offline 模式：把整个应用打成单个 IIFE 文件，再内联进 HTML，
@@ -10,6 +15,9 @@ export default defineConfig(({ mode }) => {
     // base:'./' 让资源引用都是相对路径
     base: './',
     plugins: [vue()],
+    define: {
+      __APP_VERSION__: JSON.stringify(pkg.version),
+    },
     build: offline
       ? {          outDir: 'dist-offline',
           assetsDir: '.',
