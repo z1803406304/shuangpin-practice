@@ -52,7 +52,7 @@ const MIN_FREQ_IDIOM = 30
  */
 const QUOTA_4CHAR = 1200
 /** 句子最多多少个汉字（太长的句子一屏放不下，也不适合作为一道题） */
-const MAX_SENTENCE_CHARS = 26
+const MAX_SENTENCE_CHARS = 36
 
 const SIMPLIFIED = new Set(HANZI.map((h) => h.c))
 const CJK = /[\u4e00-\u9fff]/
@@ -196,6 +196,12 @@ function buildSentences() {
       problems.push(`${line.slice(0, 12)}… 超过 ${MAX_SENTENCE_CHARS} 字`)
       continue
     }
+    // 和词库同一条规则：只用常用字，生僻字不进练习语料
+    const rare = chars.filter((ch) => !SIMPLIFIED.has(ch))
+    if (rare.length > 0) {
+      problems.push(`${line.slice(0, 12)}… 含非常用字 ${[...new Set(rare)].join('')}`)
+      continue
+    }
     const syllables = syllablesOf(chars.join(''))
     if (!syllables || syllables.length !== chars.length) {
       problems.push(`${line.slice(0, 12)}… 有音节无法编码`)
@@ -227,7 +233,41 @@ export const SENTENCE_COUNT = ${rows.length}
 `
 
   writeFileSync(resolve(ROOT, 'src/data/sentences.ts'), out, 'utf8')
+
+  // ── 质量报告：条数/长度分布/常用字覆盖率 ──
+  // 语料的价值不只是条数，更重要的是覆盖了多少**常用字**。
+  // 覆盖率低意味着有些常用字在句子模式里永远练不到。
+  const lengthBuckets = { '4-8 字': 0, '9-16 字': 0, '17-26 字': 0, '27-36 字': 0 }
+  const covered = new Set()
+  for (const row of rows) {
+    const n = row.s.split(' ').length
+    if (n <= 8) lengthBuckets['4-8 字'] += 1
+    else if (n <= 16) lengthBuckets['9-16 字'] += 1
+    else if (n <= 26) lengthBuckets['17-26 字'] += 1
+    else lengthBuckets['27-36 字'] += 1
+    for (const ch of row.t) if (CJK.test(ch)) covered.add(ch)
+  }
+
   console.log(`✅ src/data/sentences.ts：${rows.length} 条句子 / 短文（共 ${totalChars} 个汉字）`)
+  console.log(`   长度分布：${Object.entries(lengthBuckets).map(([k, v]) => `${k} ${v}`).join(' · ')}`)
+  console.log(`   去重汉字：${covered.size} 个`)
+
+  const bands = [500, 1000, 1500, 2000, 3500]
+  const coverage = []
+  for (const band of bands) {
+    const slice = HANZI.slice(0, band)
+    const hit = slice.filter((h) => covered.has(h.c)).length
+    coverage.push(`前${band}: ${((hit / band) * 100).toFixed(0)}%`)
+  }
+  console.log(`   常用字覆盖率：${coverage.join('  ')}`)
+
+  // 还缺哪些常用的字 —— 补语料时照这个写，比凭感觉有效
+  const missing = HANZI.slice(0, 1000)
+    .filter((h) => !covered.has(h.c))
+    .map((h) => h.c)
+  console.log(`   前 1000 常用字里还没覆盖的 ${missing.length} 个：`)
+  console.log(`   ${missing.join('')}`)
+
   if (problems.length > 0) {
     console.log(`ℹ️  跳过 ${problems.length} 条：`)
     for (const p of problems.slice(0, 10)) console.log(`   ${p}`)

@@ -108,7 +108,7 @@ test('词库：没有简繁重复项（一词只保留简体那一版）', () =>
 
 test('句子语料：条数、汉字数与音节数一致，且都能编码', () => {
   assert.equal(SENTENCES.length, SENTENCE_COUNT)
-  assert.ok(SENTENCE_COUNT >= 60, `句子语料偏少：${SENTENCE_COUNT}`)
+  assert.ok(SENTENCE_COUNT >= 300, `句子语料偏少：${SENTENCE_COUNT}`)
   const problems = []
   for (const entry of SENTENCES) {
     const hanziCount = [...entry.t].filter((ch) => /[\u4e00-\u9fff]/.test(ch)).length
@@ -122,6 +122,33 @@ test('句子语料：条数、汉字数与音节数一致，且都能编码', ()
     }
   }
   assert.deepEqual(problems.slice(0, 10), [], `\n${problems.slice(0, 10).join('\n')}`)
+})
+
+test('句子语料：只用常用字，且常用字覆盖率不能回落', () => {
+  const common = new Set(HANZI.map((h) => h.c))
+  const covered = new Set()
+  const rareHits = []
+  for (const entry of SENTENCES) {
+    for (const ch of entry.t) {
+      if (!/[\u4e00-\u9fff]/.test(ch)) continue
+      if (!common.has(ch)) rareHits.push(`${ch}（见「${entry.t.slice(0, 10)}…」）`)
+      covered.add(ch)
+    }
+  }
+  assert.deepEqual(rareHits.slice(0, 10), [], `句子语料里不该有非常用字：\n${rareHits.slice(0, 10).join('\n')}`)
+
+  /*
+   * 覆盖率回归护栏。
+   * 语料的价值不只是条数 —— 最常用的一批字如果在句子模式里永远练不到，
+   * 语料就白写了。踩过的坑：最初 65 条语料只覆盖了前 500 常用字的 37%。
+   * 现在（335 条 / 3516 汉字）是 98% / 71%，所以把下限锁在 95% / 68%。
+   */
+  const cover = (band) => HANZI.slice(0, band).filter((h) => covered.has(h.c)).length / band
+  const top500 = cover(500)
+  const top1000 = cover(1000)
+  assert.ok(top500 >= 0.95, `前 500 常用字覆盖率跌到 ${(top500 * 100).toFixed(0)}%，要求 ≥95%`)
+  assert.ok(top1000 >= 0.68, `前 1000 常用字覆盖率跌到 ${(top1000 * 100).toFixed(0)}%，要求 ≥68%`)
+  assert.ok(covered.size >= 800, `去重汉字偏少：${covered.size}`)
 })
 
 test('常用字表：按字频排序，且每个字的编码与编码器一致', () => {  assert.equal(HANZI.length, HANZI_COUNT)
