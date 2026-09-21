@@ -1,0 +1,68 @@
+/* 设计变量：明/暗两套主题，所有组件只引用变量 */
+:root {
+  --bg: #f2f2f3;
+  --panel: #ffffff;
+  --panel-soft: #fafafa;
+  --text: #1f2328;
+  --text-dim: #8b9198;
+  --text-faint: #b6bcc4;
+  --border: #d8dce1;
+  --border-strong: #c2c8ce;
+  --key-bg: linear-gradient(#ffffff, #f7f8f9);
+  --key-border: #c8cdd3;
+  --key-shadow: 0 1px 0 #c8cdd3, 0 2px 4px rgba(16, 24, 40, 0.08);
+  --accent: #2f6feb;
+  --accent-soft: #e8f0fe;
+  --ok: #2da44e;
+  --ok-soft: #e6f4ea;
+  --danger: #e5484d;
+  --danger-soft: #fdecee;
+  --hint-soft: #fff6d6;
+  --hint-border: #e8c34a;
+  --slot: #eef0f2;
+  --radius: 6px;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", monospace;
+  --han: "Kaiti SC", KaiTi, STKaiti, "Noto Serif SC", "Songti SC", SimSun, serif;
+}
+
+.app.night {
+  --bg: #16181d;
+  --panel: #1e2126;
+  --panel-soft: #23262c;
+  --text: #e6e8ea;
+  --text-dim: #9aa1a9;
+  --text-faint: #6b737b;
+  --border: #343941;
+  --border-strong: #454c55;
+  --key-bg: linear-gradient(#2a2e35, #23262c);
+  --key-border: #3d434b;
+  --key-shadow: 0 1px 0 #3d434b, 0 2px 4px rgba(0, 0, 0, 0.4);
+  --accent: #6ea8fe;
+  --accent-soft: #1d2b45;
+  --ok: #4ac26b;
+  --ok-soft: #18301f;
+  --danger: #ff6369;
+  --danger-soft: #3a1d20;
+  --hint-soft: #3a3418;
+  --hint-border: #8a7530;
+  --slot: #2a2e35;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+button {
+  font-family: inherit;
+}

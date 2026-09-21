@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+.npm-cache/
+dist/
+dist-offline/
+release/
+
+# 生成期下载的数据源缓存（可重下：npm run gen:all）
+data-src/
+
+# 日志与本地文件
+*.log
+*.local
+.DS_Store
+Thumbs.db
+
+# 编辑器 / IDE
+.vscode/
+.idea/
+*.swp
+
+# 验证/截图脚本用的临时浏览器 profile（正常都在系统临时目录，这里只是兜底）
+.edge-verify-profile/

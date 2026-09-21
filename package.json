@@ -1,0 +1,56 @@
+{
+  "name": "shuangpin-practice",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "小鹤双拼打字练习系统：七种练习模式、卡住自动提示、错误热力图、历史复盘与易错复习，支持离线单文件运行",
+  "license": "MIT",
+  "author": "yummy <1803406304@qq.com>",
+  "homepage": "https://github.com/z1803406304/shuangpin-practice#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/z1803406304/shuangpin-practice.git"
+  },
+  "bugs": {
+    "url": "https://github.com/z1803406304/shuangpin-practice/issues"
+  },
+  "keywords": [
+    "双拼",
+    "小鹤双拼",
+    "shuangpin",
+    "flypy",
+    "打字练习",
+    "typing-practice",
+    "vue3",
+    "vite"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "build:offline": "vite build --mode offline && node scripts/inline-offline.mjs",
+    "release": "npm run build:offline && node scripts/make-release.mjs",
+    "preview": "vite preview",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "gen:data": "node scripts/gen-syllables.mjs",
+    "gen:corpus": "node scripts/gen-corpus.mjs",
+    "gen:all": "node scripts/gen-syllables.mjs && node scripts/gen-corpus.mjs",
+    "verify:flypy": "node scripts/verify-against-flypy.mjs",
+    "verify:file": "node scripts/verify-file-url.mjs",
+    "make:screenshot": "node scripts/make-screenshot.mjs"
+  },
+  "dependencies": {
+    "pinyin-pro": "3.29",
+    "vue": "3.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "opencc-js": "^1.4.2",
+    "typescript": "5.9",
+    "vite": "^8.3.0",
+    "vue-tsc": "^3.3.11"
+  }
+}

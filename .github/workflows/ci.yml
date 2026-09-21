@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      # 单测覆盖编码器全量回归、题库质量、提示策略、统计、历史、出题器、会话状态机
+      - name: 单元测试
+        run: npm test
+
+      - name: 类型检查
+        run: npm run typecheck
+
+      - name: 构建
+        run: npm run build
+
+      # 离线单文件包也必须能构建出来（内含 JS 可解析性、脚本位置等自检）
+      - name: 构建离线单文件包
+        run: npm run build:offline
